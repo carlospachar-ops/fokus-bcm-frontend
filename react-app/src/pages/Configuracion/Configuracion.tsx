@@ -200,7 +200,7 @@ function Configuracion() {
         <div className="cfgG-heroTop">
           <div className="cfgG-brand">FOKUS</div>
 
-          <button type="button" className="cfgG-navBtn">
+          <button type="button" className="cfgG-navBtn" onClick={() => navigate("/")}>
             ‹ Navigation
           </button>
         </div>
