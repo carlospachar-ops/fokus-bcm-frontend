@@ -1,0 +1,45 @@
+.topbar {
+    height: 56px;
+    background: #0b2239;
+    color: white;
+}
+
+.topbar-left {
+    min-width: 340px;
+}
+
+.topbar-menu-btn {
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
+.topbar-brand {
+    letter-spacing: 0.3px;
+}
+
+.topbar-section {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.topbar-search {
+    max-width: 520px;
+}
+
+.topbar-search-icon {
+    background: #e9eef5;
+}
+
+.topbar-date {
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+.topbar-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.18);
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+}

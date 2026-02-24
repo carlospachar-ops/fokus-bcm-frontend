@@ -1,0 +1,37 @@
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import MainLayout from "./layouts/MainLayout";
+
+import Home from "./pages/Home/Home";
+import NuevaAplicacion from "./pages/Aplicacion/NuevaAplicacion";
+import NuevoContacto from "./pages/NuevoContacto";
+import NuevoArchivoAdjunto from "./pages/NuevoArchivoAdjunto";
+import DetalleAplicacion from "./pages/DetalleAplicacion";
+import DetalleUbicacion from "./pages/DetalleUbicacion";
+import DetalleProceso from "./pages/DetalleProceso";
+import Configuracion from "./pages/Configuracion/Configuracion";
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/nueva-aplicacion" element={<NuevaAplicacion />} />
+          <Route path="/nuevo-contacto" element={<NuevoContacto />} />
+          <Route
+            path="/nuevo-archivo-adjunto"
+            element={<NuevoArchivoAdjunto />}
+          />
+          <Route path="/detalle-aplicacion" element={<DetalleAplicacion />} />
+          <Route path="/detalle-ubicacion" element={<DetalleUbicacion />} />
+          <Route path="/detalle-proceso" element={<DetalleProceso />} />
+          <Route path="/configuracion" element={<Configuracion />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export default App;
