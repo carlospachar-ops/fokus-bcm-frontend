@@ -289,7 +289,7 @@ function Configuracion() {
           title="EMPLOYEES & SKILLS"
           actions={
             <>
-              <ActionBtn title="Agregar" onClick={() => alert("Agregar")}>
+              <ActionBtn title="Agregar" onClick={() => navigate("/nuevo-empleado")}>
                 +
               </ActionBtn>
               <ActionBtn title="Buscar" onClick={() => alert("Buscar")}>
