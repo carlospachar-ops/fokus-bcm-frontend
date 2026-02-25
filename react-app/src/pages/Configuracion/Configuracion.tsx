@@ -39,13 +39,48 @@ function Section(props: SectionProps) {
   );
 }
 
-type Col = { key: string; label: string; width?: string };
+type Col = {
+  key: string;
+  label: string;
+  width?: string;
+  render?: (value: any, row: Record<string, any>) => React.ReactNode;
+};
 
 type TableProps = {
   cols: Col[];
-  rows: Record<string, string>[];
+  rows: Record<string, any>[];
   emptyText?: string;
 };
+
+function DepChips({ names }: { names: string }) {
+  const deps = (names || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s !== "");
+
+  if (deps.length === 0) return <span className="text-muted">0</span>;
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+      {deps.map((d) => (
+        <span
+          key={d}
+          style={{
+            padding: "2px 8px",
+            borderRadius: 999,
+            border: "1px solid #d0d7de",
+            fontSize: 12,
+            background: "#f6f8fa",
+            whiteSpace: "nowrap",
+          }}
+          title={d}
+        >
+          {d}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 function DataTable(props: TableProps) {
   return (
@@ -72,7 +107,9 @@ function DataTable(props: TableProps) {
             props.rows.map((r, idx) => (
               <tr key={idx}>
                 {props.cols.map((c) => (
-                  <td key={c.key}>{r[c.key] ?? ""}</td>
+                  <td key={c.key}>
+                    {c.render ? c.render(r[c.key], r) : (r[c.key] ?? "")}
+                  </td>
                 ))}
               </tr>
             ))
@@ -84,11 +121,11 @@ function DataTable(props: TableProps) {
 }
 
 function Configuracion() {
-  const [apps, setApps] = useState<Record<string, string>[]>([]);
-  const [ubis, setUbis] = useState<Record<string, string>[]>([]);
-  const [provs, setProvs] = useState<Record<string, string>[]>([]);
-  const [emps, setEmps] = useState<Record<string, string>[]>([]);
-  const [hws, setHws] = useState<Record<string, string>[]>([]);
+  const [apps, setApps] = useState<Record<string, any>[]>([]);
+  const [ubis, setUbis] = useState<Record<string, any>[]>([]);
+  const [provs, setProvs] = useState<Record<string, any>[]>([]);
+  const [emps, setEmps] = useState<Record<string, any>[]>([]);
+  const [hws, setHws] = useState<Record<string, any>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -115,11 +152,11 @@ function Configuracion() {
         if (!e.ok) throw new Error(e.error || "Error empleados");
         if (!h.ok) throw new Error(h.error || "Error hardware");
 
-        setApps((a.data ?? []) as Record<string, string>[]);
-        setUbis((u.data ?? []) as Record<string, string>[]);
-        setProvs((p.data ?? []) as Record<string, string>[]);
-        setEmps((e.data ?? []) as Record<string, string>[]);
-        setHws((h.data ?? []) as Record<string, string>[]);
+        setApps((a.data ?? []) as Record<string, any>[]);
+        setUbis((u.data ?? []) as Record<string, any>[]);
+        setProvs((p.data ?? []) as Record<string, any>[]);
+        setEmps((e.data ?? []) as Record<string, any>[]);
+        setHws((h.data ?? []) as Record<string, any>[]);
       } catch (err: any) {
         setError(err.message || "Error desconocido");
       } finally {
@@ -137,12 +174,16 @@ function Configuracion() {
     { key: "proveedor", label: "Proveedor", width: "150px" },
     { key: "propietario", label: "Propietario", width: "140px" },
     { key: "version", label: "Version", width: "110px" },
-    { key: "dependencias", label: "Dependencias de aplicacion" },
+    {
+      key: "dependencias_nombres",
+      label: "Dependencias de aplicacion",
+      render: (value) => <DepChips names={String(value ?? "")} />,
+    },
     { key: "rto", label: "RTO", width: "90px" },
     { key: "impacto", label: "Impacto de negocio", width: "170px" },
   ];
 
-  const ubicacionesCols: Col[] = [
+  const ubicacionesCols = [
     { key: "codUbicacion", label: "Cod. Ubicacion", width: "130px" },
     { key: "nombre", label: "Nombre", width: "160px" },
     { key: "descripcion", label: "Descripcion" },
@@ -152,9 +193,9 @@ function Configuracion() {
     { key: "dependencias", label: "Dependencias de ubicacion" },
     { key: "tipo", label: "Tipo de ubicacion", width: "150px" },
     { key: "impacto", label: "Impacto de negocio", width: "170px" },
-  ];
+  ] as Col[];
 
-  const proveedoresCols: Col[] = [
+  const proveedoresCols = [
     { key: "codProv", label: "Cod. Prov", width: "110px" },
     { key: "nombre", label: "Nombre", width: "160px" },
     { key: "descripcion", label: "Descripcion" },
@@ -164,9 +205,9 @@ function Configuracion() {
     { key: "direccion", label: "Direccion", width: "180px" },
     { key: "email", label: "Email", width: "180px" },
     { key: "impacto", label: "Impacto de negocio", width: "170px" },
-  ];
+  ] as Col[];
 
-  const empleadosCols: Col[] = [
+  const empleadosCols = [
     { key: "rolId", label: "Rol ID", width: "90px" },
     { key: "nombre", label: "Nombre", width: "160px" },
     { key: "departamento", label: "Departamento", width: "160px" },
@@ -179,9 +220,9 @@ function Configuracion() {
     { key: "asignados", label: "Empleados asignados", width: "170px" },
     { key: "respaldo", label: "Empleados Respaldo", width: "170px" },
     { key: "impacto", label: "Impacto de negocio", width: "170px" },
-  ];
+  ] as Col[];
 
-  const hardwareCols: Col[] = [
+  const hardwareCols = [
     { key: "codHw", label: "Cod. Hw", width: "100px" },
     { key: "nombre", label: "Nombre", width: "160px" },
     { key: "descripcion", label: "Descripcion" },
@@ -191,7 +232,7 @@ function Configuracion() {
     { key: "dependencias", label: "Dependencias de hardware" },
     { key: "rto", label: "RTO", width: "90px" },
     { key: "impacto", label: "Impacto de negocio", width: "170px" },
-  ];
+  ] as Col[];
 
   return (
     <div className="cfgG-page">
@@ -200,7 +241,11 @@ function Configuracion() {
         <div className="cfgG-heroTop">
           <div className="cfgG-brand">FOKUS</div>
 
-          <button type="button" className="cfgG-navBtn" onClick={() => navigate("/")}>
+          <button
+            type="button"
+            className="cfgG-navBtn"
+            onClick={() => navigate("/")}
+          >
             ‹ Navigation
           </button>
         </div>
@@ -241,6 +286,7 @@ function Configuracion() {
           <DataTable cols={aplicacionesCols} rows={apps} />
         </Section>
 
+        {/* Todo lo demas queda igual por ahora */}
         <Section
           title="LOCATIONS"
           actions={
@@ -289,7 +335,10 @@ function Configuracion() {
           title="EMPLOYEES & SKILLS"
           actions={
             <>
-              <ActionBtn title="Agregar" onClick={() => navigate("/nuevo-empleado")}>
+              <ActionBtn
+                title="Agregar"
+                onClick={() => navigate("/nuevo-empleado")}
+              >
                 +
               </ActionBtn>
               <ActionBtn title="Buscar" onClick={() => alert("Buscar")}>

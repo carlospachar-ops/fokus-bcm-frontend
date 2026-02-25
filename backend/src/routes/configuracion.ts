@@ -14,14 +14,30 @@ router.get("/aplicaciones", async (req, res) => {
         CAST(a.id_proveedor AS CHAR) AS proveedor,
         CAST(a.id_propietario AS CHAR) AS propietario,
         a.version AS version,
-        CAST((
-          SELECT COUNT(*)
-          FROM dependencia_aplicacion da
-          WHERE da.id_aplicacion = a.id_aplicacion
-        ) AS CHAR) AS dependencias,
+
+        CAST(COUNT(da.id_dependencia) AS CHAR) AS dependencias,
+
+        COALESCE(
+          GROUP_CONCAT(d.nombre ORDER BY d.nombre SEPARATOR ', '),
+          ''
+        ) AS dependencias_nombres,
+
         CAST(a.rto_horas AS CHAR) AS rto,
         a.impacto_negocio AS impacto
       FROM aplicacion a
+      LEFT JOIN dependencia_aplicacion da
+        ON da.id_aplicacion = a.id_aplicacion
+      LEFT JOIN dependencia d
+        ON d.id_dependencia = da.id_dependencia
+      GROUP BY
+        a.id_aplicacion,
+        a.nombre,
+        a.descripcion,
+        a.id_proveedor,
+        a.id_propietario,
+        a.version,
+        a.rto_horas,
+        a.impacto_negocio
       ORDER BY a.id_aplicacion ASC
       LIMIT 200
     `);
@@ -156,12 +172,15 @@ router.post("/aplicaciones", async (req, res) => {
       nombre,
       descripcion,
       id_vendor_software,
+      vendor_software_nuevo, // NUEVO (string o null)
       id_propietario,
       version,
       rto_horas,
       impacto_negocio,
       id_proveedor,
-      dependencias_ids, // array de ids de aplicaciones dependientes
+
+      dependencias_ids, // number[]
+      dependencias_nuevas, // string[]
     } = req.body;
 
     if (!nombre || String(nombre).trim() === "") {
@@ -179,37 +198,91 @@ router.post("/aplicaciones", async (req, res) => {
     const provNum = toNumOrNull(id_proveedor);
     if (provNum === "__NaN__") {
       conn.release();
-      return res.status(400).json({ ok: false, error: "id_proveedor debe ser numero" });
+      return res
+        .status(400)
+        .json({ ok: false, error: "id_proveedor debe ser numero" });
     }
 
     const propNum = toNumOrNull(id_propietario);
     if (propNum === "__NaN__") {
       conn.release();
-      return res.status(400).json({ ok: false, error: "id_propietario debe ser numero" });
+      return res
+        .status(400)
+        .json({ ok: false, error: "id_propietario debe ser numero" });
     }
 
-    const vendSoftNum = toNumOrNull(id_vendor_software);
-    if (vendSoftNum === "__NaN__") {
+    const rtoNum = toNumOrNull(rto_horas);
+    if (rtoNum === "__NaN__") {
+      conn.release();
+      return res
+        .status(400)
+        .json({ ok: false, error: "rto_horas debe ser numero" });
+    }
+
+    const vendSoftNumRaw = toNumOrNull(id_vendor_software);
+    if (vendSoftNumRaw === "__NaN__") {
       conn.release();
       return res
         .status(400)
         .json({ ok: false, error: "id_vendor_software debe ser numero" });
     }
 
-    const rtoNum = toNumOrNull(rto_horas);
-    if (rtoNum === "__NaN__") {
-      conn.release();
-      return res.status(400).json({ ok: false, error: "rto_horas debe ser numero" });
-    }
+    const normalize = (s: string) =>
+      String(s ?? "")
+        .trim()
+        .replace(/\s+/g, " ");
+    const vendorNuevo = vendor_software_nuevo
+      ? normalize(vendor_software_nuevo)
+      : "";
+    const impactoTxt = impacto_negocio ? String(impacto_negocio) : null;
 
-    const deps: number[] = Array.isArray(dependencias_ids)
+    const depsExistentes: number[] = Array.isArray(dependencias_ids)
       ? dependencias_ids
           .map((x: any) => Number(x))
           .filter((x: any) => !Number.isNaN(x))
       : [];
 
+    const depsNuevasRaw: string[] = Array.isArray(dependencias_nuevas)
+      ? dependencias_nuevas
+          .map((x: any) => normalize(x))
+          .filter((x: string) => x !== "")
+      : [];
+
+    // quitar duplicados deps nuevas (case-insensitive)
+    const depsNuevas: string[] = [];
+    const seenNew = new Set<string>();
+    for (const d of depsNuevasRaw) {
+      const key = d.toLowerCase();
+      if (!seenNew.has(key)) {
+        seenNew.add(key);
+        depsNuevas.push(d);
+      }
+    }
+
     await conn.beginTransaction();
 
+    // 1) Resolver vendor software
+    let vendSoftFinal: number | null =
+      vendSoftNumRaw === null ? null : vendSoftNumRaw;
+
+    if (vendorNuevo !== "") {
+      const [foundVS]: any = await conn.query(
+        `SELECT id_vendor_software FROM vendor_software WHERE LOWER(nombre)=LOWER(?) LIMIT 1`,
+        [vendorNuevo],
+      );
+
+      if (Array.isArray(foundVS) && foundVS.length > 0) {
+        vendSoftFinal = Number(foundVS[0].id_vendor_software);
+      } else {
+        const [insVS]: any = await conn.query(
+          `INSERT INTO vendor_software (nombre) VALUES (?)`,
+          [vendorNuevo],
+        );
+        vendSoftFinal = insVS.insertId;
+      }
+    }
+
+    // 2) Insertar aplicacion
     const [result]: any = await conn.query(
       `
       INSERT INTO aplicacion
@@ -218,12 +291,12 @@ router.post("/aplicaciones", async (req, res) => {
         (?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
-        String(nombre).trim(),
+        normalize(nombre),
         descripcion ? String(descripcion) : null,
-        vendSoftNum,
+        vendSoftFinal,
         version ? String(version) : null,
         rtoNum,
-        impacto_negocio ? String(impacto_negocio) : null,
+        impactoTxt,
         provNum,
         propNum,
       ],
@@ -231,12 +304,46 @@ router.post("/aplicaciones", async (req, res) => {
 
     const id_aplicacion = result.insertId;
 
-    // Insertar dependencias (tabla puente)
-    if (deps.length > 0) {
-      const values = deps.map((idDep) => [id_aplicacion, idDep]);
+    // 3) Resolver IDs para dependencias nuevas (crear si no existen)
+    const depsNuevasIds: number[] = [];
+
+    for (const depName of depsNuevas) {
+      const [foundDep]: any = await conn.query(
+        `SELECT id_dependencia FROM dependencia WHERE LOWER(nombre)=LOWER(?) LIMIT 1`,
+        [depName],
+      );
+
+      if (Array.isArray(foundDep) && foundDep.length > 0) {
+        depsNuevasIds.push(Number(foundDep[0].id_dependencia));
+      } else {
+        const [insDep]: any = await conn.query(
+          `INSERT INTO dependencia (nombre) VALUES (?)`,
+          [depName],
+        );
+        depsNuevasIds.push(insDep.insertId);
+      }
+    }
+
+    // 4) Unir deps existentes + nuevas, quitar duplicados
+    const allDeps = [...depsExistentes, ...depsNuevasIds]
+      .map((x) => Number(x))
+      .filter((x) => !Number.isNaN(x));
+
+    const finalDeps: number[] = [];
+    const seen = new Set<number>();
+    for (const idDep of allDeps) {
+      if (!seen.has(idDep)) {
+        seen.add(idDep);
+        finalDeps.push(idDep);
+      }
+    }
+
+    // 5) Insertar en tabla puente dependencia_aplicacion
+    if (finalDeps.length > 0) {
+      const values = finalDeps.map((idDep) => [id_aplicacion, idDep]);
 
       await conn.query(
-        `INSERT INTO dependencia_aplicacion (id_aplicacion, id_aplicacion_dependiente) VALUES ?`,
+        `INSERT INTO dependencia_aplicacion (id_aplicacion, id_dependencia) VALUES ?`,
         [values],
       );
     }
@@ -297,6 +404,20 @@ router.get("/catalogos/aplicaciones", async (req, res) => {
     const [rows] = await pool.query(`
       SELECT id_aplicacion AS id, nombre
       FROM aplicacion
+      ORDER BY nombre
+      LIMIT 500
+    `);
+    res.json({ ok: true, data: rows });
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+router.get("/catalogos/dependencias", async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT id_dependencia AS id, nombre
+      FROM dependencia
       ORDER BY nombre
       LIMIT 500
     `);
