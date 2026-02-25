@@ -6,6 +6,10 @@
     box-shadow: 0 10px 30px rgba(16, 24, 40, 0.06);
 }
 
+.nuevaAppMax {
+    max-width: 980px;
+}
+
 .nuevaApp-title {
     font-weight: 700;
     letter-spacing: 0.2px;
@@ -27,7 +31,6 @@
 
 .nuevaApp-input:focus {
     box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.16);
-    /* verde bootstrap */
     border-color: rgba(25, 135, 84, 0.45);
 }
 
@@ -39,4 +42,88 @@
 .nuevaApp-btn {
     border-radius: 12px;
     font-weight: 600;
+}
+
+/* =========================
+   AutoCreate (dropdown)
+========================= */
+.ac-wrap {
+    position: relative;
+}
+
+.ac-menu {
+    position: absolute;
+    z-index: 10;
+    left: 0;
+    right: 0;
+    margin-top: 6px;
+    max-height: 220px;
+    overflow: auto;
+}
+
+.ac-row {
+    border-radius: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ac-rowHint {
+    font-size: 12px;
+}
+
+.ac-note {
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+/* =========================
+   Badges (chips)
+========================= */
+.nuevaAppBadges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.nuevaAppBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    user-select: none;
+}
+
+.nuevaAppBadge--ok {
+    background: #198754;
+    color: #fff;
+}
+
+.nuevaAppBadge--warn {
+    background: #ffc107;
+    color: #111;
+}
+
+.nuevaAppBadgeX {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    line-height: 1;
+    font-size: 16px;
+    padding: 0 2px;
+}
+
+.nuevaAppBadge--ok .nuevaAppBadgeX {
+    color: #fff;
+}
+
+.nuevaAppBadge--warn .nuevaAppBadgeX {
+    color: #111;
+}
+
+.nuevaAppHelp {
+    font-size: 12px;
+    margin-top: 6px;
 }
