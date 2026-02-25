@@ -10,6 +10,10 @@ import DetalleUbicacion from "./pages/DetalleUbicacion";
 import DetalleProceso from "./pages/DetalleProceso";
 import Configuracion from "./pages/Configuracion/Configuracion";
 import { AgregarEmpleado } from "./pages/Empleado/AgregarEmpleado";
+import NuevoHardware from "./pages/Hardware/NuevoHardware";
+import ModificarHardware from "./pages/Hardware/ModificarHardware";
+import EditarHardware from "./pages/Hardware/ModificarHardware";
+
 
 function App() {
   return (
@@ -20,6 +24,8 @@ function App() {
           <Route path="/nueva-aplicacion" element={<NuevaAplicacion />} />
           <Route path="/nuevo-contacto" element={<NuevoContacto />} />
           <Route path="/nuevo-empleado" element={<AgregarEmpleado />} />
+          <Route path="/nuevo-hardware" element={<NuevoHardware/>} />
+          <Route path="/Hardware/editar/:id" element={<EditarHardware/>} />
           <Route
             path="/nuevo-archivo-adjunto"
             element={<NuevoArchivoAdjunto />}
