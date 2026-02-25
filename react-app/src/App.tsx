@@ -3,7 +3,7 @@ import MainLayout from "./layouts/MainLayout";
 
 import Home from "./pages/Home/Home";
 import NuevaAplicacion from "./pages/Aplicacion/NuevaAplicacion";
-import NuevoContacto from "./pages/NuevoContacto";
+import NuevoContacto from "./pages/Propietario/NuevoContacto";
 import NuevoArchivoAdjunto from "./pages/NuevoArchivoAdjunto";
 import DetalleAplicacion from "./pages/DetalleAplicacion";
 import DetalleUbicacion from "./pages/DetalleUbicacion";
