@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { pool } from "../db";
+import { ResultSetHeader } from "mysql2";
 
 const router = Router();
 
@@ -32,6 +33,96 @@ router.get("/aplicaciones", async (req, res) => {
   }
 });
 
+//Insertar ubicacion
+router.post("/ubicaciones", async (req, res) => {
+  const conn = await pool.getConnection();
+
+  try {
+    const {
+      nombre,
+      descripcion,
+      ciudad,
+      id_pais,
+      direccion,
+      id_tipo_ubicacion,
+      impacto_negocio,
+      dependencias_ids,
+    } = req.body;
+
+    if (!nombre || String(nombre).trim() === "") {
+      conn.release();
+      return res.status(400).json({ ok: false, error: "nombre es requerido" });
+    }
+
+    const toNumOrNull = (v: any) => {
+      if (v === null || v === undefined || v === "") return null;
+      const n = Number(v);
+      if (Number.isNaN(n)) return "__NaN__";
+      return n;
+    };
+
+    const paisNum = toNumOrNull(id_pais);
+    if (paisNum === "__NaN__") {
+      conn.release();
+      return res.status(400).json({ ok: false, error: "id_pais debe ser numero" });
+    }
+
+    const tipoNum = toNumOrNull(id_tipo_ubicacion);
+    if (tipoNum === "__NaN__") {
+      conn.release();
+      return res.status(400).json({ ok: false, error: "id_tipo_ubicacion debe ser numero" });
+    }
+
+    const deps: number[] = Array.isArray(dependencias_ids)
+      ? dependencias_ids
+          .map((x: any) => Number(x))
+          .filter((x: any) => !Number.isNaN(x))
+      : [];
+
+    await conn.beginTransaction();
+
+    const [result]: any = await conn.query(
+      `
+      INSERT INTO ubicacion
+        (nombre, descripcion, ciudad, id_pais, direccion, id_tipo_ubicacion, impacto_negocio)
+      VALUES
+        (?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        String(nombre).trim(),
+        descripcion ? String(descripcion) : null,
+        ciudad ? String(ciudad) : null,
+        paisNum,
+        direccion ? String(direccion) : null,
+        tipoNum,
+        impacto_negocio ? String(impacto_negocio) : null,
+      ],
+    );
+
+    const id_ubicacion = result.insertId;
+
+    // Insertar dependencias (tabla puente)
+    if (deps.length > 0) {
+      const values = deps.map((idDep) => [id_ubicacion, idDep]);
+
+      await conn.query(
+        `INSERT INTO dependencia_ubicacion (id_ubicacion, id_ubicacion_dependiente) VALUES ?`,
+        [values],
+      );
+    }
+
+    await conn.commit();
+    res.status(201).json({ ok: true, id_ubicacion });
+  } catch (e: any) {
+    try {
+      await conn.rollback();
+    } catch {}
+    res.status(500).json({ ok: false, error: e.message });
+  } finally {
+    conn.release();
+  }
+});
+
 // LOCATIONS
 router.get("/ubicaciones", async (req, res) => {
   try {
@@ -41,14 +132,14 @@ router.get("/ubicaciones", async (req, res) => {
         u.nombre AS nombre,
         u.descripcion AS descripcion,
         u.ciudad AS ciudad,
-        u.pais AS pais,
+        CAST(u.id_pais AS CHAR) AS idPais,
         u.direccion AS direccion,
+        CAST(u.id_tipo_ubicacion AS CHAR) AS idTipoUbicacion,
         CAST((
           SELECT COUNT(*)
           FROM dependencia_ubicacion du
           WHERE du.id_ubicacion = u.id_ubicacion
         ) AS CHAR) AS dependencias,
-        u.tipo_ubicacion AS tipo,
         u.impacto_negocio AS impacto
       FROM ubicacion u
       ORDER BY u.id_ubicacion ASC
@@ -60,7 +151,6 @@ router.get("/ubicaciones", async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-
 // VENDORS / PROVEEDORES
 router.get("/proveedores", async (req, res) => {
   try {
@@ -300,6 +390,131 @@ router.get("/catalogos/aplicaciones", async (req, res) => {
       ORDER BY nombre
       LIMIT 500
     `);
+    res.json({ ok: true, data: rows });
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+router.get("/catalogos/paises", async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT id_pais AS id, nombre
+      FROM pais
+      ORDER BY nombre
+    `);
+    res.json({ ok: true, data: rows });
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+router.get("/catalogos/tipos-ubicacion", async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT id_tipo_ubicacion AS id, nombre
+      FROM tipo_ubicacion
+      ORDER BY nombre
+    `);
+    res.json({ ok: true, data: rows });
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+router.get("/catalogos/ubicaciones", async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT id_ubicacion AS id, nombre
+      FROM ubicacion
+      ORDER BY nombre
+      LIMIT 500
+    `);
+    res.json({ ok: true, data: rows });
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Search paises
+router.get("/catalogos/paises/search", async (req, res) => {
+  try {
+    const q = (req.query.q as string) || "";
+    const [rows] = await pool.query(`
+      SELECT id_pais AS id, nombre
+      FROM pais
+      WHERE nombre LIKE ?
+      ORDER BY nombre
+      LIMIT 20
+    `, [`%${q}%`]);
+    res.json({ ok: true, data: rows });
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Create pais
+router.post("/catalogos/paises", async (req, res) => {
+  try {
+    const { nombre } = req.body;
+    if (!nombre || String(nombre).trim() === "") {
+      return res.status(400).json({ ok: false, error: "nombre es requerido" });
+    }
+    const [result]: any = await pool.query(
+      `INSERT INTO pais (nombre) VALUES (?)`,
+      [String(nombre).trim()]
+    );
+    res.json({ ok: true, id: result.insertId });
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Search tipos de ubicacion
+router.get("/catalogos/tipos-ubicacion/search", async (req, res) => {
+  try {
+    const q = (req.query.q as string) || "";
+    const [rows] = await pool.query(`
+      SELECT id_tipo_ubicacion AS id, nombre
+      FROM tipo_ubicacion
+      WHERE nombre LIKE ?
+      ORDER BY nombre
+      LIMIT 20
+    `, [`%${q}%`]);
+    res.json({ ok: true, data: rows });
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Create tipo_ubicacion
+router.post("/catalogos/tipos-ubicacion", async (req, res) => {
+  try {
+    const { nombre } = req.body;
+    if (!nombre || String(nombre).trim() === "") {
+      return res.status(400).json({ ok: false, error: "nombre es requerido" });
+    }
+    const [result]: any = await pool.query(
+      `INSERT INTO tipo_ubicacion (nombre) VALUES (?)`,
+      [String(nombre).trim()]
+    );
+    res.json({ ok: true, id: result.insertId });
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Search ubicaciones (para dependencias)
+router.get("/catalogos/ubicaciones/search", async (req, res) => {
+  try {
+    const q = (req.query.q as string) || "";
+    const [rows] = await pool.query(`
+      SELECT id_ubicacion AS id, nombre
+      FROM ubicacion
+      WHERE nombre LIKE ?
+      ORDER BY nombre
+      LIMIT 20
+    `, [`%${q}%`]);
     res.json({ ok: true, data: rows });
   } catch (e: any) {
     res.status(500).json({ ok: false, error: e.message });
