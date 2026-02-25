@@ -360,13 +360,14 @@ function Configuracion() {
           title="HARDWARE"
           actions={
             <>
-              <ActionBtn title="Agregar" onClick={() => alert("Agregar")}>
+              <ActionBtn title="Agregar" 
+              onClick={() => navigate("/nuevo-hardware")}>
                 +
               </ActionBtn>
               <ActionBtn title="Buscar" onClick={() => alert("Buscar")}>
                 🔎
               </ActionBtn>
-              <ActionBtn title="Editar" onClick={() => alert("Editar")}>
+              <ActionBtn title="Editar" onClick={() => navigate("/Hardware/editar/${hw.id}") }>
                 ✎
               </ActionBtn>
               <ActionBtn title="Mas" onClick={() => alert("Mas")}>
