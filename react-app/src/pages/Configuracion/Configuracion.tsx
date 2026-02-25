@@ -245,7 +245,10 @@ function Configuracion() {
           title="LOCATIONS"
           actions={
             <>
-              <ActionBtn title="Agregar" onClick={() => alert("Agregar")}>
+              <ActionBtn
+                title="Agregar"
+                onClick={() => navigate("/nueva-ubicacion")}
+              >
                 +
               </ActionBtn>
               <ActionBtn title="Buscar" onClick={() => alert("Buscar")}>

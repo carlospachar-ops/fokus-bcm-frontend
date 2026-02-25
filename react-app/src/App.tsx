@@ -10,6 +10,7 @@ import DetalleUbicacion from "./pages/DetalleUbicacion";
 import DetalleProceso from "./pages/DetalleProceso";
 import Configuracion from "./pages/Configuracion/Configuracion";
 import { AgregarEmpleado } from "./pages/Empleado/AgregarEmpleado";
+import { AgregarUbicacion } from "./pages/Ubicacion/AgregarUbicacion";
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="/nueva-aplicacion" element={<NuevaAplicacion />} />
           <Route path="/nuevo-contacto" element={<NuevoContacto />} />
           <Route path="/nuevo-empleado" element={<AgregarEmpleado />} />
+          <Route path="/nueva-ubicacion" element={<AgregarUbicacion />} />
           <Route
             path="/nuevo-archivo-adjunto"
             element={<NuevoArchivoAdjunto />}
