@@ -9,7 +9,7 @@ import DetalleAplicacion from "./pages/DetalleAplicacion";
 import DetalleUbicacion from "./pages/DetalleUbicacion";
 import DetalleProceso from "./pages/DetalleProceso";
 import Configuracion from "./pages/Configuracion/Configuracion";
-import { AgregarEmpleado } from "./pages/Empleado/AgregarEmpleado";
+import AgregarEmpleado from "./pages/Empleado/AgregarEmpleado";
 import NuevoHardware from "./pages/Hardware/NuevoHardware";
 import ModificarHardware from "./pages/Hardware/ModificarHardware";
 import EditarHardware from "./pages/Hardware/ModificarHardware";
