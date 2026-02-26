@@ -13,7 +13,7 @@ import AgregarEmpleado from "./pages/Empleado/AgregarEmpleado";
 import AgregarUbicacion from "./pages/Ubicacion/AgregarUbicacion";
 import NuevoHardware from "./pages/Hardware/NuevoHardware";
 import EditarHardware from "./pages/Hardware/ModificarHardware";
-
+import AgregarProveedor from "./pages/Proveedores/AgregarProveedor";
 function App() {
   return (
     <BrowserRouter>
@@ -34,6 +34,7 @@ function App() {
           <Route path="/detalle-ubicacion" element={<DetalleUbicacion />} />
           <Route path="/detalle-proceso" element={<DetalleProceso />} />
           <Route path="/configuracion" element={<Configuracion />} />
+          <Route path="/nuevo-proveedor" element={<AgregarProveedor />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

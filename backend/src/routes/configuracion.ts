@@ -524,4 +524,63 @@ router.post("/empleados", async (req, res) => {
   }
 });
 
+router.post("/proveedores", async (req, res) => {
+  try {
+    const {
+      nombre,
+      descripcion,
+      producto_servicio,
+      fecha_expiracion_contrato,
+      direccion,
+      email,
+      impacto_negocio,
+    } = req.body;
+
+    if (!nombre) {
+      return res.status(400).json({ ok: false, error: "El nombre es obligatorio" });
+    }
+    if (!descripcion) {
+      return res.status(400).json({ ok: false, error: "La descripción es obligatoria" });
+    }
+    if (!producto_servicio) {
+      return res.status(400).json({ ok: false, error: "El producto/servicio es obligatorio" });
+    }
+    if (!fecha_expiracion_contrato) {
+      return res.status(400).json({ ok: false, error: "La fecha de expiración del contrato es obligatoria" });
+    }
+    if (!direccion) {
+      return res.status(400).json({ ok: false, error: "La dirección es obligatoria" });
+    }
+    if (!email) {
+      return res.status(400).json({ ok: false, error: "El email es obligatorio" });
+    }
+    if (!impacto_negocio) {
+      return res.status(400).json({ ok: false, error: "El impacto en el negocio es obligatorio" });
+    }
+
+
+    // Insert employee
+    
+    const [result] = await pool.query(
+      `INSERT INTO proveedor 
+       (nombre, descripcion, producto_servicio, fecha_expiracion_contrato, direccion, email, impacto_negocio)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        nombre,
+        descripcion,
+        producto_servicio,
+        fecha_expiracion_contrato,
+        direccion,
+        email,
+        impacto_negocio,
+      ],
+    );
+    const id_proveedor = (result as any).insertId;
+    res.json({ ok: true, id_proveedor });
+  } catch (e: any) {
+    console.error("Error en POST /cfg/proveedores:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 export default router;
