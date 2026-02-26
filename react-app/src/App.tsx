@@ -3,13 +3,17 @@ import MainLayout from "./layouts/MainLayout";
 
 import Home from "./pages/Home/Home";
 import NuevaAplicacion from "./pages/Aplicacion/NuevaAplicacion";
-import NuevoContacto from "./pages/NuevoContacto";
+import NuevoContacto from "./pages/Propietario/NuevoContacto";
 import NuevoArchivoAdjunto from "./pages/NuevoArchivoAdjunto";
 import DetalleAplicacion from "./pages/DetalleAplicacion";
 import DetalleUbicacion from "./pages/DetalleUbicacion";
 import DetalleProceso from "./pages/DetalleProceso";
 import Configuracion from "./pages/Configuracion/Configuracion";
-import AgregarEmpleado from "./pages/Empleado/AgregarEmpleado";
+import { AgregarEmpleado } from "./pages/Empleado/AgregarEmpleado";
+import NuevoHardware from "./pages/Hardware/NuevoHardware";
+import ModificarHardware from "./pages/Hardware/ModificarHardware";
+import EditarHardware from "./pages/Hardware/ModificarHardware";
+
 
 function App() {
   return (
@@ -20,6 +24,8 @@ function App() {
           <Route path="/nueva-aplicacion" element={<NuevaAplicacion />} />
           <Route path="/nuevo-contacto" element={<NuevoContacto />} />
           <Route path="/nuevo-empleado" element={<AgregarEmpleado />} />
+          <Route path="/nuevo-hardware" element={<NuevoHardware/>} />
+          <Route path="/Hardware/editar/:id" element={<EditarHardware/>} />
           <Route
             path="/nuevo-archivo-adjunto"
             element={<NuevoArchivoAdjunto />}
