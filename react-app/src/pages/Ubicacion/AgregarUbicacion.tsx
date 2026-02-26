@@ -152,7 +152,7 @@ export function AgregarUbicacion() {
 
     try {
       if (form.nombre.trim() === "") {
-        alert("El nombre es obligatorio.");
+        alert("El nombre es obligatorio. ");
         return;
       }
 
