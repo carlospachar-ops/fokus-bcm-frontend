@@ -10,14 +10,9 @@ import DetalleUbicacion from "./pages/DetalleUbicacion";
 import DetalleProceso from "./pages/DetalleProceso";
 import Configuracion from "./pages/Configuracion/Configuracion";
 import { AgregarEmpleado } from "./pages/Empleado/AgregarEmpleado";
-<<<<<<< HEAD
 import { AgregarUbicacion } from "./pages/Ubicacion/AgregarUbicacion";
-=======
 import NuevoHardware from "./pages/Hardware/NuevoHardware";
-import ModificarHardware from "./pages/Hardware/ModificarHardware";
 import EditarHardware from "./pages/Hardware/ModificarHardware";
-
->>>>>>> main
 
 function App() {
   return (
@@ -28,12 +23,9 @@ function App() {
           <Route path="/nueva-aplicacion" element={<NuevaAplicacion />} />
           <Route path="/nuevo-contacto" element={<NuevoContacto />} />
           <Route path="/nuevo-empleado" element={<AgregarEmpleado />} />
-<<<<<<< HEAD
           <Route path="/nueva-ubicacion" element={<AgregarUbicacion />} />
-=======
-          <Route path="/nuevo-hardware" element={<NuevoHardware/>} />
-          <Route path="/Hardware/editar/:id" element={<EditarHardware/>} />
->>>>>>> main
+          <Route path="/nuevo-hardware" element={<NuevoHardware />} />
+          <Route path="/Hardware/editar/:id" element={<EditarHardware />} />
           <Route
             path="/nuevo-archivo-adjunto"
             element={<NuevoArchivoAdjunto />}
