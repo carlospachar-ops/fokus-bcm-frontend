@@ -28,6 +28,7 @@ router.get("/aplicaciones", async (req, res) => {
 
     res.json({ ok: true, data: rows });
   } catch (e: any) {
+    console.error("Error en /cfg/aplicaciones:", e);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
@@ -302,6 +303,104 @@ router.get("/catalogos/aplicaciones", async (req, res) => {
     `);
     res.json({ ok: true, data: rows });
   } catch (e: any) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+router.get("/catalogos/empleados", async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT id_empleado AS id, nombre
+      FROM empleado
+      ORDER BY nombre
+      LIMIT 500
+    `);
+    res.json({ ok: true, data: rows });
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// CREATE EMPLOYEE
+router.post("/empleados", async (req, res) => {
+  try {
+    const {
+      nombre,
+        departamento,
+        aplicaciones_id,
+        empleados_respaldo_id,
+        habilidad,
+        numero_requerido,
+        rol_tabla,
+        descripcion_rol,
+    } = req.body;
+
+    if (!nombre) {
+      return res.status(400).json({ ok: false, error: "El nombre es obligatorio" });
+    }
+    if (!departamento) {
+      return res.status(400).json({ ok: false, error: "El departamento es obligatorio" });
+    }
+    if (!habilidad) {
+      return res.status(400).json({ ok: false, error: "La habilidad es obligatoria" });
+    }
+    if (!numero_requerido || isNaN(Number(numero_requerido))) {
+      return res.status(400).json({ ok: false, error: "El numero_requerido es obligatorio y debe ser un numero" });
+    }
+    if (!rol_tabla) {
+      return res.status(400).json({ ok: false, error: "El rol es obligatorio" });
+    }
+    if (!descripcion_rol) {
+      return res.status(400).json({ ok: false, error: "La descripcion del rol es obligatoria" });
+    }
+    for (const id of empleados_respaldo_id || []) {
+      if (isNaN(Number(id))) {
+        return res.status(400).json({ ok: false, error: "Todos los empleados de respaldo deben ser numeros" });
+      }
+    }
+    for (const id of aplicaciones_id || []) {
+      if (isNaN(Number(id))) {
+        return res.status(400).json({ ok: false, error: "Todas las aplicaciones asignadas deben ser numeros" });
+      }
+    }
+
+
+    // Insert employee
+    
+
+    const [Respuesta] = await pool.query(
+      `INSERT INTO rol_empleado (nombre, descripcion) VALUES (?, ?)`,
+      [rol_tabla, descripcion_rol],
+    );
+    const [result] = await pool.query(
+      `INSERT INTO empleado 
+       (nombre, departamento,rol, habilidad_critica, numero_requerido,id_rol_empleado)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        nombre,
+        departamento,
+        rol_tabla,
+        habilidad,
+        numero_requerido,
+        (Respuesta as any).insertId,
+      ],
+    );
+    const id_empleado = (result as any).insertId;
+    for (const idApp of aplicaciones_id || []) {
+      await pool.query(
+        `INSERT INTO empleado_asignado (id_empleado, id_aplicacion) VALUES (?, ?)`,
+        [id_empleado, idApp],
+      );
+    }
+    for (const idResp of empleados_respaldo_id || []) {
+      await pool.query(
+        `INSERT INTO empleado_respaldo (id_empleado, id_aplicacion) VALUES (?, ?)`,
+        [id_empleado, idResp],
+      );
+    }
+    res.json({ ok: true, id_empleado });
+  } catch (e: any) {
+    console.error("Error en POST /cfg/empleados:", e);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
