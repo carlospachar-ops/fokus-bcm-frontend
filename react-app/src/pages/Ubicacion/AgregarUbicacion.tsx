@@ -25,7 +25,7 @@ const initState: FormState = {
 
 type Suggestion = { id: number; nombre: string };
 
-export function AgregarUbicacion() {
+function AgregarUbicacion() {
   const [form, setForm] = useState<FormState>(initState);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -69,7 +69,9 @@ export function AgregarUbicacion() {
     }
     try {
       const base = import.meta.env.VITE_API_URL;
-      const resp = await fetch(`${base}/cfg/catalogos/tipos-ubicacion/search?q=${encodeURIComponent(query)}`);
+      const resp = await fetch(
+        `${base}/cfg/catalogos/tipos-ubicacion/search?q=${encodeURIComponent(query)}`,
+      );
       const json = await resp.json();
       if (json.ok) {
         setTipoSuggestions(json.data || []);
@@ -86,7 +88,9 @@ export function AgregarUbicacion() {
     }
     try {
       const base = import.meta.env.VITE_API_URL;
-      const resp = await fetch(`${base}/cfg/catalogos/ubicaciones/search?q=${encodeURIComponent(query)}`);
+      const resp = await fetch(
+        `${base}/cfg/catalogos/ubicaciones/search?q=${encodeURIComponent(query)}`,
+      );
       const json = await resp.json();
       if (json.ok) {
         setDepSuggestions(json.data || []);
@@ -107,7 +111,7 @@ export function AgregarUbicacion() {
   }, [form.tipo_ubicacion, selectedTipo, searchTipo]);
 
   const addDependencia = (dep: Option) => {
-    if (!selectedDeps.find(d => d.id === dep.id)) {
+    if (!selectedDeps.find((d) => d.id === dep.id)) {
       setSelectedDeps([...selectedDeps, dep]);
     }
     setDepQuery("");
@@ -116,7 +120,7 @@ export function AgregarUbicacion() {
   };
 
   const removeDependencia = (id: number) => {
-    setSelectedDeps(selectedDeps.filter(d => d.id !== id));
+    setSelectedDeps(selectedDeps.filter((d) => d.id !== id));
   };
 
   const onChange = (
@@ -126,7 +130,7 @@ export function AgregarUbicacion() {
   ) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    
+
     if (name === "tipo_ubicacion") {
       setSelectedTipo(null);
       setShowTipoSuggestions(true);
@@ -165,7 +169,7 @@ export function AgregarUbicacion() {
         const tipoResp = await fetch(`${base}/cfg/catalogos/tipos-ubicacion`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nombre: form.tipo_ubicacion.trim() })
+          body: JSON.stringify({ nombre: form.tipo_ubicacion.trim() }),
         });
         const tipoJson = await tipoResp.json();
         if (tipoJson.ok) {
@@ -185,7 +189,7 @@ export function AgregarUbicacion() {
           form.impacto_negocio.trim() === ""
             ? null
             : form.impacto_negocio.trim(),
-        dependencias_ids: selectedDeps.map(d => d.id),
+        dependencias_ids: selectedDeps.map((d) => d.id),
       };
 
       const resp = await fetch(`${base}/cfg/ubicaciones`, {
@@ -282,9 +286,7 @@ export function AgregarUbicacion() {
 
         <div className="row g-3 align-items-start mb-2">
           <div className="col-12 col-md-3">
-            <label className="form-label mb-0 nuevaApp-label">
-              Dirección
-            </label>
+            <label className="form-label mb-0 nuevaApp-label">Dirección</label>
           </div>
           <div className="col-12 col-md-9">
             <textarea
@@ -312,12 +314,17 @@ export function AgregarUbicacion() {
                 value={form.tipo_ubicacion}
                 onChange={onChange}
                 onFocus={() => setShowTipoSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowTipoSuggestions(false), 200)}
+                onBlur={() =>
+                  setTimeout(() => setShowTipoSuggestions(false), 200)
+                }
                 placeholder="Escribe para buscar o agregar..."
               />
               {showTipoSuggestions && tipoSuggestions.length > 0 && (
-                <div className="position-absolute w-100 border rounded mt-1 bg-white" style={{ zIndex: 1000, maxHeight: 200, overflow: "auto" }}>
-                  {tipoSuggestions.map(t => (
+                <div
+                  className="position-absolute w-100 border rounded mt-1 bg-white"
+                  style={{ zIndex: 1000, maxHeight: 200, overflow: "auto" }}
+                >
+                  {tipoSuggestions.map((t) => (
                     <div
                       key={t.id}
                       className="p-2 hover-bg"
@@ -327,19 +334,27 @@ export function AgregarUbicacion() {
                       {t.nombre}
                     </div>
                   ))}
-                  {form.tipo_ubicacion.length > 0 && !tipoSuggestions.find(t => t.nombre.toLowerCase() === form.tipo_ubicacion.toLowerCase()) && (
-                    <div
-                      className="p-2 text-primary border-top"
-                      style={{ cursor: "pointer" }}
-                      onClick={() => {
-                        setSelectedTipo({ id: -1, nombre: form.tipo_ubicacion });
-                        setTipoSuggestions([]);
-                        setShowTipoSuggestions(false);
-                      }}
-                    >
-                      + Agregar "{form.tipo_ubicacion}"
-                    </div>
-                  )}
+                  {form.tipo_ubicacion.length > 0 &&
+                    !tipoSuggestions.find(
+                      (t) =>
+                        t.nombre.toLowerCase() ===
+                        form.tipo_ubicacion.toLowerCase(),
+                    ) && (
+                      <div
+                        className="p-2 text-primary border-top"
+                        style={{ cursor: "pointer" }}
+                        onClick={() => {
+                          setSelectedTipo({
+                            id: -1,
+                            nombre: form.tipo_ubicacion,
+                          });
+                          setTipoSuggestions([]);
+                          setShowTipoSuggestions(false);
+                        }}
+                      >
+                        + Agregar "{form.tipo_ubicacion}"
+                      </div>
+                    )}
                 </div>
               )}
             </div>
@@ -360,16 +375,24 @@ export function AgregarUbicacion() {
                 value={depQuery}
                 onChange={(e) => {
                   setDepQuery(e.target.value);
-                  const timer = setTimeout(() => searchDep(e.target.value), 300);
+                  const timer = setTimeout(
+                    () => searchDep(e.target.value),
+                    300,
+                  );
                   return () => clearTimeout(timer);
                 }}
                 onFocus={() => setShowDepSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowDepSuggestions(false), 200)}
+                onBlur={() =>
+                  setTimeout(() => setShowDepSuggestions(false), 200)
+                }
                 placeholder="Escribe para buscar..."
               />
               {showDepSuggestions && depSuggestions.length > 0 && (
-                <div className="position-absolute w-100 border rounded mt-1 bg-white" style={{ zIndex: 1000, maxHeight: 200, overflow: "auto" }}>
-                  {depSuggestions.map(d => (
+                <div
+                  className="position-absolute w-100 border rounded mt-1 bg-white"
+                  style={{ zIndex: 1000, maxHeight: 200, overflow: "auto" }}
+                >
+                  {depSuggestions.map((d) => (
                     <div
                       key={d.id}
                       className="p-2 hover-bg"
@@ -385,7 +408,7 @@ export function AgregarUbicacion() {
             {/* Selected dependencies */}
             {selectedDeps.length > 0 && (
               <div className="mt-2">
-                {selectedDeps.map(d => (
+                {selectedDeps.map((d) => (
                   <span key={d.id} className="badge bg-secondary me-1 mb-1 p-2">
                     {d.nombre}
                     <button
@@ -439,3 +462,5 @@ export function AgregarUbicacion() {
     </div>
   );
 }
+
+export default AgregarUbicacion;

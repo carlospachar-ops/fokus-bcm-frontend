@@ -10,7 +10,7 @@ import DetalleUbicacion from "./pages/DetalleUbicacion";
 import DetalleProceso from "./pages/DetalleProceso";
 import Configuracion from "./pages/Configuracion/Configuracion";
 import AgregarEmpleado from "./pages/Empleado/AgregarEmpleado";
-import { AgregarUbicacion } from "./pages/Ubicacion/AgregarUbicacion";
+import AgregarUbicacion from "./pages/Ubicacion/AgregarUbicacion";
 import NuevoHardware from "./pages/Hardware/NuevoHardware";
 import EditarHardware from "./pages/Hardware/ModificarHardware";
 
