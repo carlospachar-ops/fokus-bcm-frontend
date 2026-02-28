@@ -335,7 +335,7 @@ function Configuracion() {
           title="VENDORS"
           actions={
             <>
-              <ActionBtn title="Agregar" onClick={() => alert("Agregar")}>
+              <ActionBtn title="Agregar" onClick={() => navigate("/nuevo-proveedor")}>
                 +
               </ActionBtn>
               <ActionBtn title="Buscar" onClick={() => alert("Buscar")}>

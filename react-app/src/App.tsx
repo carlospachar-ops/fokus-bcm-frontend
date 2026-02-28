@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
-
 import Home from "./pages/Home/Home";
 import NuevaAplicacion from "./pages/Aplicacion/NuevaAplicacion";
 import NuevoContacto from "./pages/Propietario/NuevoContacto";
@@ -14,6 +13,7 @@ import AgregarUbicacion from "./pages/Ubicacion/AgregarUbicacion";
 import NuevoHardware from "./pages/Hardware/NuevoHardware";
 import EditarHardware from "./pages/Hardware/ModificarHardware";
 import EditarAplicacion from "./pages/Aplicacion/EditarAplicacion";
+import AgregarProveedor from "./pages/Proveedores/AgregarProveedor";
 
 function App() {
   return (
@@ -39,6 +39,7 @@ function App() {
           <Route path="/detalle-ubicacion" element={<DetalleUbicacion />} />
           <Route path="/detalle-proceso" element={<DetalleProceso />} />
           <Route path="/configuracion" element={<Configuracion />} />
+          <Route path="/nuevo-proveedor" element={<AgregarProveedor />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
