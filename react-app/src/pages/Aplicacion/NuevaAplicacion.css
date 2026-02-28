@@ -117,7 +117,7 @@
 }
 
 .nuevaAppBadge--ok .nuevaAppBadgeX {
-    color: #fff;
+    color: #000;
 }
 
 .nuevaAppBadge--warn .nuevaAppBadgeX {
@@ -127,4 +127,10 @@
 .nuevaAppHelp {
     font-size: 12px;
     margin-top: 6px;
+}
+
+.nuevaAppBadge--ok {
+    background: #e7f7ee;
+    color: #0f6b3d;
+    border: 1px solid #bfe9d0;
 }

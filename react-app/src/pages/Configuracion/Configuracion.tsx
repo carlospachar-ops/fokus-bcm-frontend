@@ -1,124 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Configuracion.css";
 
-type ActionBtnProps = {
-  title: string;
-  onClick?: () => void;
-  children: React.ReactNode;
-};
+import ActionBtn from "./components/ActionBtn";
+import Section from "./components/Section";
+import DataTable from "./components/DataTable";
+import DepChips from "./components/DepChips";
 
-function ActionBtn(props: ActionBtnProps) {
-  return (
-    <button
-      type="button"
-      className="cfgG-btnIcon"
-      title={props.title}
-      onClick={props.onClick}
-    >
-      {props.children}
-    </button>
-  );
-}
-
-type SectionProps = {
-  title: string;
-  actions?: React.ReactNode;
-  children: React.ReactNode;
-};
-
-function Section(props: SectionProps) {
-  return (
-    <div className="cfgG-section">
-      <div className="cfgG-sectionHeader">
-        <div className="cfgG-sectionTitle">{props.title}</div>
-        <div className="cfgG-actions">{props.actions}</div>
-      </div>
-      <div className="cfgG-sectionBody">{props.children}</div>
-    </div>
-  );
-}
-
-type Col = {
-  key: string;
-  label: string;
-  width?: string;
-  render?: (value: any, row: Record<string, any>) => React.ReactNode;
-};
-
-type TableProps = {
-  cols: Col[];
-  rows: Record<string, any>[];
-  emptyText?: string;
-};
-
-function DepChips({ names }: { names: string }) {
-  const deps = (names || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s) => s !== "");
-
-  if (deps.length === 0) return <span className="text-muted">0</span>;
-
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-      {deps.map((d) => (
-        <span
-          key={d}
-          style={{
-            padding: "2px 8px",
-            borderRadius: 999,
-            border: "1px solid #d0d7de",
-            fontSize: 12,
-            background: "#f6f8fa",
-            whiteSpace: "nowrap",
-          }}
-          title={d}
-        >
-          {d}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function DataTable(props: TableProps) {
-  return (
-    <div className="cfgG-tableWrap">
-      <table className="cfgG-table">
-        <thead>
-          <tr>
-            {props.cols.map((c) => (
-              <th key={c.key} style={c.width ? { width: c.width } : undefined}>
-                {c.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-
-        <tbody>
-          {props.rows.length === 0 ? (
-            <tr>
-              <td className="cfgG-empty" colSpan={props.cols.length}>
-                {props.emptyText ?? "Sin registros"}
-              </td>
-            </tr>
-          ) : (
-            props.rows.map((r, idx) => (
-              <tr key={idx}>
-                {props.cols.map((c) => (
-                  <td key={c.key}>
-                    {c.render ? c.render(r[c.key], r) : (r[c.key] ?? "")}
-                  </td>
-                ))}
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-}
+import type { Col } from "./types";
 
 function Configuracion() {
   const [apps, setApps] = useState<Record<string, any>[]>([]);
@@ -129,6 +18,18 @@ function Configuracion() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+
+  // APPLICATIONS UI
+  const [appSearchOpen, setAppSearchOpen] = useState(false);
+  const [appQuery, setAppQuery] = useState("");
+  const [appSelectedId, setAppSelectedId] = useState<number | string | null>(
+    null,
+  );
+  const [appSelectedRow, setAppSelectedRow] = useState<Record<
+    string,
+    any
+  > | null>(null);
+  const [appMenuOpen, setAppMenuOpen] = useState(false);
 
   useEffect(() => {
     const run = async () => {
@@ -183,7 +84,7 @@ function Configuracion() {
     { key: "impacto", label: "Impacto de negocio", width: "170px" },
   ];
 
-  const ubicacionesCols = [
+  const ubicacionesCols: Col[] = [
     { key: "codUbicacion", label: "Cod. Ubicacion", width: "130px" },
     { key: "nombre", label: "Nombre", width: "160px" },
     { key: "descripcion", label: "Descripcion" },
@@ -193,9 +94,9 @@ function Configuracion() {
     { key: "dependencias", label: "Dependencias de ubicacion" },
     { key: "tipo", label: "Tipo de ubicacion", width: "150px" },
     { key: "impacto", label: "Impacto de negocio", width: "170px" },
-  ] as Col[];
+  ];
 
-  const proveedoresCols = [
+  const proveedoresCols: Col[] = [
     { key: "codProv", label: "Cod. Prov", width: "110px" },
     { key: "nombre", label: "Nombre", width: "160px" },
     { key: "descripcion", label: "Descripcion" },
@@ -205,9 +106,9 @@ function Configuracion() {
     { key: "direccion", label: "Direccion", width: "180px" },
     { key: "email", label: "Email", width: "180px" },
     { key: "impacto", label: "Impacto de negocio", width: "170px" },
-  ] as Col[];
+  ];
 
-  const empleadosCols = [
+  const empleadosCols: Col[] = [
     { key: "rolId", label: "Rol ID", width: "90px" },
     { key: "nombre", label: "Nombre", width: "160px" },
     { key: "departamento", label: "Departamento", width: "160px" },
@@ -220,9 +121,9 @@ function Configuracion() {
     { key: "asignados", label: "Empleados asignados", width: "170px" },
     { key: "respaldo", label: "Empleados Respaldo", width: "170px" },
     { key: "impacto", label: "Impacto de negocio", width: "170px" },
-  ] as Col[];
+  ];
 
-  const hardwareCols = [
+  const hardwareCols: Col[] = [
     { key: "codHw", label: "Cod. Hw", width: "100px" },
     { key: "nombre", label: "Nombre", width: "160px" },
     { key: "descripcion", label: "Descripcion" },
@@ -232,7 +133,37 @@ function Configuracion() {
     { key: "dependencias", label: "Dependencias de hardware" },
     { key: "rto", label: "RTO", width: "90px" },
     { key: "impacto", label: "Impacto de negocio", width: "170px" },
-  ] as Col[];
+  ];
+
+  const appsFiltered = useMemo(() => {
+    const q = appQuery.trim().toLowerCase();
+    if (!q) return apps;
+
+    return apps.filter((row) => {
+      const haystack = [
+        row.codApp,
+        row.nombre,
+        row.descripcion,
+        row.proveedor,
+        row.propietario,
+        row.version,
+        row.dependencias_nombres,
+        row.rto,
+        row.impacto,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(q);
+    });
+  }, [apps, appQuery]);
+
+  const onAppEdit = () => {
+    console.log("edit id:", appSelectedRow?.codApp, appSelectedRow);
+    if (!appSelectedRow) return alert("Selecciona una aplicacion primero.");
+    navigate(`/aplicaciones/editar/${appSelectedRow.id_aplicacion}`);
+  };
 
   return (
     <div className="cfgG-page">
@@ -271,22 +202,110 @@ function Configuracion() {
               >
                 +
               </ActionBtn>
-              <ActionBtn title="Buscar" onClick={() => alert("Buscar")}>
+
+              <ActionBtn
+                title="Buscar"
+                onClick={() => {
+                  setAppSearchOpen((v) => !v);
+                  setAppQuery("");
+                }}
+              >
                 🔎
               </ActionBtn>
-              <ActionBtn title="Editar" onClick={() => alert("Editar")}>
+
+              <ActionBtn title="Editar" onClick={onAppEdit}>
                 ✎
               </ActionBtn>
-              <ActionBtn title="Mas" onClick={() => alert("Mas")}>
+
+              <ActionBtn title="Mas" onClick={() => setAppMenuOpen((v) => !v)}>
                 ⋮
               </ActionBtn>
             </>
           }
         >
-          <DataTable cols={aplicacionesCols} rows={apps} />
+          {appSearchOpen ? (
+            <div className="cfgG-searchRow" style={{ marginBottom: 20 }}>
+              <input
+                className="cfgG-searchInput"
+                placeholder="Buscar por codigo, nombre, proveedor, propietario, dependencias..."
+                value={appQuery}
+                onChange={(e) => setAppQuery(e.target.value)}
+              />
+              <button
+                type="button"
+                className="cfgG-searchClear"
+                onClick={() => {
+                  setAppQuery("");
+                  setAppSearchOpen(false);
+                }}
+                title="Limpiar"
+              >
+                ✕
+              </button>
+            </div>
+          ) : null}
+
+          {appMenuOpen ? (
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                flexWrap: "wrap",
+                marginBottom: 10,
+              }}
+            >
+              <button
+                type="button"
+                className="cfgG-navBtn"
+                onClick={() => {
+                  if (!appSelectedRow)
+                    return alert("Selecciona una aplicacion primero.");
+                  alert(`Aplicacion: ${appSelectedRow.nombre ?? ""}`);
+                }}
+              >
+                Ver
+              </button>
+
+              <button type="button" className="cfgG-navBtn" onClick={onAppEdit}>
+                Editar
+              </button>
+
+              <button
+                type="button"
+                className="cfgG-navBtn"
+                onClick={() => {
+                  if (!appSelectedRow)
+                    return alert("Selecciona una aplicacion primero.");
+                  alert("Aqui luego implementamos eliminar con confirm + API.");
+                }}
+              >
+                Eliminar
+              </button>
+
+              <button
+                type="button"
+                className="cfgG-navBtn"
+                onClick={() => setAppMenuOpen(false)}
+              >
+                Cerrar
+              </button>
+            </div>
+          ) : null}
+
+          <DataTable
+            cols={aplicacionesCols}
+            rows={appsFiltered}
+            rowKey={(row) => row.codApp}
+            selectedKey={appSelectedId}
+            onRowClick={(row) => {
+              console.log("CLICK APP id_aplicacion:", row.codApp, row);
+              setAppSelectedRow(row);
+              setAppSelectedId(row.codApp);
+              setAppMenuOpen(false);
+            }}
+          />
         </Section>
 
-        {/* Todo lo demas queda igual por ahora */}
         <Section
           title="LOCATIONS"
           actions={
@@ -363,14 +382,19 @@ function Configuracion() {
           title="HARDWARE"
           actions={
             <>
-              <ActionBtn title="Agregar" 
-              onClick={() => navigate("/nuevo-hardware")}>
+              <ActionBtn
+                title="Agregar"
+                onClick={() => navigate("/nuevo-hardware")}
+              >
                 +
               </ActionBtn>
               <ActionBtn title="Buscar" onClick={() => alert("Buscar")}>
                 🔎
               </ActionBtn>
-              <ActionBtn title="Editar" onClick={() => navigate("/Hardware/editar/${hw.id}") }>
+              <ActionBtn
+                title="Editar"
+                onClick={() => alert("Selecciona un hardware para editar")}
+              >
                 ✎
               </ActionBtn>
               <ActionBtn title="Mas" onClick={() => alert("Mas")}>

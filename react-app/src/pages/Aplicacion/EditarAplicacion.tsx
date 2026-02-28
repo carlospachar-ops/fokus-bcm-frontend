@@ -1,26 +1,63 @@
-// NuevaAplicacion.tsx
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import "./NuevaAplicacion.css";
 
 import type { Option, FormState } from "./types";
 import { initState } from "./types";
 import { normalizeName } from "./utils";
 
-import { useQuery } from "./hooks/useQuery";
 import { useCatalogos } from "./hooks/useCatalogos";
-
 import AplicacionForm from "./components/AplicacionForm";
 
-function NuevaAplicacion() {
+type ApiApp = {
+  id_aplicacion: number;
+
+  nombre?: string;
+  descripcion?: string;
+
+  proveedor?: string | number | null;
+  propietario?: string | number | null;
+
+  version?: string | null;
+
+  dependencias_nombres?: string | null;
+  dependencias_ids?: number[] | null;
+
+  rto?: string | number | null;
+  rto_horas?: number | null;
+
+  impacto?: string | null;
+  impacto_negocio?: string | null;
+
+  id_vendor_software?: number | null;
+};
+
+function splitNames(csv: string) {
+  return csv
+    .split(",")
+    .map((x) => x.trim())
+    .filter((x) => x.length > 0);
+}
+
+function toHoursString(x: any) {
+  if (x === null || x === undefined) return "";
+  if (typeof x === "number") return String(x);
+  const s = String(x).trim();
+  if (s.endsWith("h")) return s.slice(0, -1).trim();
+  return s;
+}
+
+export default function EditarAplicacion() {
+  const { id } = useParams();
+  const appId = Number(id);
+
+  const navigate = useNavigate();
+
   const [form, setForm] = useState<FormState>(initState);
   const [loading, setLoading] = useState(false);
 
   const [depInput, setDepInput] = useState("");
   const [vendorSoftInput, setVendorSoftInput] = useState("");
-
-  const navigate = useNavigate();
-  const query = useQuery();
 
   const {
     proveedores,
@@ -32,37 +69,156 @@ function NuevaAplicacion() {
     reloadCatalogos,
   } = useCatalogos();
 
+  // Refs para evitar loops por cambios de referencia
+  const reloadRef = useRef(reloadCatalogos);
   useEffect(() => {
+    reloadRef.current = reloadCatalogos;
+  }, [reloadCatalogos]);
+
+  const dependenciasRef = useRef<Option[]>([]);
+  useEffect(() => {
+    dependenciasRef.current = dependencias;
+  }, [dependencias]);
+
+  // Bandera para no recargar catálogos mil veces
+  const catalogosCargadosRef = useRef(false);
+
+  // 1) Cargar catalogos UNA sola vez (aunque reloadCatalogos cambie)
+  useEffect(() => {
+    let alive = true;
+
     const load = async () => {
       try {
+        if (catalogosCargadosRef.current) return;
         setError("");
-        await reloadCatalogos();
+        await reloadRef.current();
+        if (!alive) return;
+        catalogosCargadosRef.current = true;
       } catch (e: any) {
+        if (!alive) return;
         setError(e.message);
       }
     };
+
     load();
-  }, [reloadCatalogos, setError]);
+    return () => {
+      alive = false;
+    };
+  }, [setError]);
+
+  // 2) Cargar aplicacion por ID UNA sola vez
+  const appCargadaRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const prov = query.get("set_proveedor");
-    const prop = query.get("set_propietario");
+    if (!Number.isFinite(appId) || appId <= 0) return;
+    if (appCargadaRef.current === appId) return;
 
-    const apply = async () => {
-      if (!prov && !prop) return;
+    let alive = true;
 
+    const loadById = async () => {
       try {
-        await reloadCatalogos();
+        setLoading(true);
+
+        // Asegura catalogos antes de mapear nombres -> ids
+        if (!catalogosCargadosRef.current) {
+          try {
+            await reloadRef.current();
+            if (!alive) return;
+            catalogosCargadosRef.current = true;
+          } catch {}
+        }
+
+        const base = import.meta.env.VITE_API_URL;
+        const resp = await fetch(`${base}/cfg/aplicaciones/${appId}`);
+        const text = await resp.text();
+
+        let json: any = null;
+        try {
+          json = text ? JSON.parse(text) : null;
+        } catch {
+          throw new Error(
+            `Respuesta no valida JSON. Primeros bytes: ${text.slice(0, 60)}`,
+          );
+        }
+
+        const data: ApiApp = json?.data ? json.data : json;
+        if (!data) throw new Error("No se recibio data de la aplicacion.");
+
+        const idsFromApi = Array.isArray(data.dependencias_ids)
+          ? data.dependencias_ids
+              .map((x) => Number(x))
+              .filter((x) => Number.isFinite(x))
+          : [];
+
+        const idsFromNames =
+          idsFromApi.length > 0
+            ? idsFromApi
+            : (typeof data.dependencias_nombres === "string"
+                ? splitNames(data.dependencias_nombres)
+                : []
+              )
+                .map((name) => {
+                  const key = name.trim().toLowerCase();
+                  const found = dependenciasRef.current.find(
+                    (d) => d.nombre.trim().toLowerCase() === key,
+                  );
+                  return found ? found.id : null;
+                })
+                .filter((x): x is number => x !== null);
+
+        if (!alive) return;
+
         setForm((prev) => ({
           ...prev,
-          id_proveedor: prov ? String(prov) : prev.id_proveedor,
-          id_propietario: prop ? String(prop) : prev.id_propietario,
+          nombre: data.nombre ?? "",
+          descripcion: data.descripcion ?? "",
+          version: data.version ?? "",
+
+          id_proveedor:
+            data.proveedor === null || data.proveedor === undefined
+              ? ""
+              : String(data.proveedor),
+
+          id_propietario:
+            data.propietario === null || data.propietario === undefined
+              ? ""
+              : String(data.propietario),
+
+          rto_horas:
+            data.rto_horas !== null && data.rto_horas !== undefined
+              ? String(data.rto_horas)
+              : toHoursString(data.rto),
+
+          impacto_negocio: data.impacto_negocio ?? data.impacto ?? "",
+
+          id_vendor_software:
+            data.id_vendor_software !== null &&
+            data.id_vendor_software !== undefined
+              ? String(data.id_vendor_software)
+              : "",
+          vendor_soft_nuevo: null,
+
+          dependencias_ids: idsFromNames,
+          dependencias_nuevas: [],
         }));
-      } catch {}
+
+        appCargadaRef.current = appId;
+      } catch (e: any) {
+        if (!alive) return;
+        alert(`Error cargando aplicacion: ${e.message}`);
+        navigate("/configuracion");
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
     };
 
-    apply();
-  }, [query, reloadCatalogos]);
+    loadById();
+
+    return () => {
+      alive = false;
+    };
+  }, [appId, navigate]);
 
   const onChange = (
     e: React.ChangeEvent<
@@ -140,7 +296,6 @@ function NuevaAplicacion() {
     const found = vendorsSoft.find(
       (x) => x.nombre.trim().toLowerCase() === value.toLowerCase(),
     );
-
     if (found) {
       pickVendorSoftware(found);
       return;
@@ -156,9 +311,9 @@ function NuevaAplicacion() {
 
   const selectedVendorSoft = useMemo(() => {
     if (form.vendor_soft_nuevo) return null;
-    const id = String(form.id_vendor_software || "").trim();
-    if (!id) return null;
-    return vendorsSoft.find((x) => x.id === Number(id)) || null;
+    const idStr = String(form.id_vendor_software || "").trim();
+    if (!idStr) return null;
+    return vendorsSoft.find((x) => x.id === Number(idStr)) || null;
   }, [form.id_vendor_software, form.vendor_soft_nuevo, vendorsSoft]);
 
   const clearExistingVendorSoft = () => {
@@ -176,9 +331,6 @@ function NuevaAplicacion() {
   };
 
   const onCancel = () => {
-    setForm(initState);
-    setDepInput("");
-    setVendorSoftInput("");
     navigate("/configuracion");
   };
 
@@ -186,6 +338,11 @@ function NuevaAplicacion() {
     e.preventDefault();
 
     try {
+      if (!Number.isFinite(appId) || appId <= 0) {
+        alert("ID de aplicacion invalido.");
+        return;
+      }
+
       if (form.nombre.trim() === "") {
         alert("El nombre es obligatorio.");
         return;
@@ -229,8 +386,8 @@ function NuevaAplicacion() {
         return;
       }
 
-      const resp = await fetch(`${base}/cfg/aplicaciones`, {
-        method: "POST",
+      const resp = await fetch(`${base}/cfg/aplicaciones/${appId}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -245,13 +402,9 @@ function NuevaAplicacion() {
         );
       }
 
-      if (!json?.ok) throw new Error(json?.error || "No se pudo guardar");
+      if (!json?.ok) throw new Error(json?.error || "No se pudo actualizar");
 
-      alert(`Aplicacion guardada. ID: ${json.id_aplicacion}`);
-
-      setForm(initState);
-      setDepInput("");
-      setVendorSoftInput("");
+      alert("Aplicacion actualizada.");
       navigate("/configuracion");
     } catch (e: any) {
       alert(`Error: ${e.message}`);
@@ -262,8 +415,8 @@ function NuevaAplicacion() {
 
   return (
     <AplicacionForm
-      title="Nueva aplicacion"
-      submitLabel="Guardar"
+      title={`Editar aplicacion #${appId}`}
+      submitLabel="Guardar cambios"
       form={form}
       loading={loading}
       error={error}
@@ -279,21 +432,25 @@ function NuevaAplicacion() {
       selectedDeps={selectedDeps}
       onPickVendorSoft={pickVendorSoftware}
       onCreateVendorSoft={createVendorSoftware}
+      selectedVendorSoft={selectedVendorSoft}
       onClearVendorSoftExisting={clearExistingVendorSoft}
       onClearVendorSoftNew={clearNewVendorSoft}
-      selectedVendorSoft={selectedVendorSoft}
       onAddExistingDep={addExistingDep}
       onAddNewDep={addNewDep}
       onRemoveExistingDep={removeExistingDep}
       onRemoveNewDep={removeNewDep}
       onNewPropietario={() =>
         navigate(
-          `/nuevo-contacto?return=${encodeURIComponent("/nueva-aplicacion")}`,
+          `/nuevo-contacto?return=${encodeURIComponent(
+            `/aplicaciones/editar/${appId}`,
+          )}`,
         )
       }
       onNewProveedor={() =>
         navigate(
-          `/nuevo-proveedor?return=${encodeURIComponent("/nueva-aplicacion")}`,
+          `/nuevo-proveedor?return=${encodeURIComponent(
+            `/aplicaciones/editar/${appId}`,
+          )}`,
         )
       }
       onSubmit={onSubmit}
@@ -301,5 +458,3 @@ function NuevaAplicacion() {
     />
   );
 }
-
-export default NuevaAplicacion;

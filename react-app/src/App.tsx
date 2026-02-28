@@ -13,6 +13,7 @@ import AgregarEmpleado from "./pages/Empleado/AgregarEmpleado";
 import AgregarUbicacion from "./pages/Ubicacion/AgregarUbicacion";
 import NuevoHardware from "./pages/Hardware/NuevoHardware";
 import EditarHardware from "./pages/Hardware/ModificarHardware";
+import EditarAplicacion from "./pages/Aplicacion/EditarAplicacion";
 
 function App() {
   return (
@@ -26,6 +27,10 @@ function App() {
           <Route path="/nueva-ubicacion" element={<AgregarUbicacion />} />
           <Route path="/nuevo-hardware" element={<NuevoHardware />} />
           <Route path="/Hardware/editar/:id" element={<EditarHardware />} />
+          <Route
+            path="/aplicaciones/editar/:id"
+            element={<EditarAplicacion />}
+          />
           <Route
             path="/nuevo-archivo-adjunto"
             element={<NuevoArchivoAdjunto />}

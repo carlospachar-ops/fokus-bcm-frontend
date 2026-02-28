@@ -8,6 +8,7 @@ router.get("/aplicaciones", async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT
+        a.id_aplicacion AS id_aplicacion,
         a.id_aplicacion AS codApp,
         a.nombre AS nombre,
         a.descripcion AS descripcion,
@@ -361,6 +362,382 @@ router.post("/aplicaciones", async (req, res) => {
   }
 });
 
+// GET APLICACION POR ID (para editar)
+router.get("/aplicaciones/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ ok: false, error: "id invalido" });
+    }
+
+    const [rows]: any = await pool.query(
+      `
+      SELECT
+        a.id_aplicacion,
+        a.nombre,
+        a.descripcion,
+        CAST(a.id_proveedor AS CHAR) AS proveedor,
+        CAST(a.id_propietario AS CHAR) AS propietario,
+        CAST(a.id_vendor_software AS CHAR) AS id_vendor_software,
+        a.version,
+        CAST(a.rto_horas AS CHAR) AS rto_horas,
+        a.impacto_negocio AS impacto_negocio,
+
+        COALESCE(GROUP_CONCAT(d.nombre ORDER BY d.nombre SEPARATOR ', '), '') AS dependencias_nombres
+      FROM aplicacion a
+      LEFT JOIN dependencia_aplicacion da
+        ON da.id_aplicacion = a.id_aplicacion
+      LEFT JOIN dependencia d
+        ON d.id_dependencia = da.id_dependencia
+      WHERE a.id_aplicacion = ?
+      GROUP BY
+        a.id_aplicacion,
+        a.nombre,
+        a.descripcion,
+        a.id_proveedor,
+        a.id_propietario,
+        a.id_vendor_software,
+        a.version,
+        a.rto_horas,
+        a.impacto_negocio
+      LIMIT 1
+      `,
+      [id],
+    );
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res
+        .status(404)
+        .json({ ok: false, error: "No existe la aplicacion" });
+    }
+
+    const app = rows[0];
+
+    // Traer dependencias_ids (para precargar chips por ID)
+    const [depRows]: any = await pool.query(
+      `
+      SELECT id_dependencia
+      FROM dependencia_aplicacion
+      WHERE id_aplicacion = ?
+      ORDER BY id_dependencia
+      `,
+      [id],
+    );
+
+    const dependencias_ids = Array.isArray(depRows)
+      ? depRows
+          .map((r: any) => Number(r.id_dependencia))
+          .filter((n: any) => !Number.isNaN(n))
+      : [];
+
+    res.json({ ok: true, data: { ...app, dependencias_ids } });
+  } catch (e: any) {
+    console.error("Error en GET /cfg/aplicaciones/:id:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET APLICACION POR ID (para editar)
+router.get("/aplicaciones/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ ok: false, error: "id invalido" });
+    }
+
+    const [rows]: any = await pool.query(
+      `
+      SELECT
+        a.id_aplicacion,
+        a.nombre,
+        a.descripcion,
+        CAST(a.id_proveedor AS CHAR) AS proveedor,
+        CAST(a.id_propietario AS CHAR) AS propietario,
+        CAST(a.id_vendor_software AS CHAR) AS id_vendor_software,
+        a.version,
+        CAST(a.rto_horas AS CHAR) AS rto_horas,
+        a.impacto_negocio AS impacto_negocio,
+
+        COALESCE(GROUP_CONCAT(d.nombre ORDER BY d.nombre SEPARATOR ', '), '') AS dependencias_nombres
+      FROM aplicacion a
+      LEFT JOIN dependencia_aplicacion da
+        ON da.id_aplicacion = a.id_aplicacion
+      LEFT JOIN dependencia d
+        ON d.id_dependencia = da.id_dependencia
+      WHERE a.id_aplicacion = ?
+      GROUP BY
+        a.id_aplicacion,
+        a.nombre,
+        a.descripcion,
+        a.id_proveedor,
+        a.id_propietario,
+        a.id_vendor_software,
+        a.version,
+        a.rto_horas,
+        a.impacto_negocio
+      LIMIT 1
+      `,
+      [id],
+    );
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res
+        .status(404)
+        .json({ ok: false, error: "No existe la aplicacion" });
+    }
+
+    const app = rows[0];
+
+    // Traer dependencias_ids (para precargar chips por ID)
+    const [depRows]: any = await pool.query(
+      `
+      SELECT id_dependencia
+      FROM dependencia_aplicacion
+      WHERE id_aplicacion = ?
+      ORDER BY id_dependencia
+      `,
+      [id],
+    );
+
+    const dependencias_ids = Array.isArray(depRows)
+      ? depRows
+          .map((r: any) => Number(r.id_dependencia))
+          .filter((n: any) => !Number.isNaN(n))
+      : [];
+
+    res.json({ ok: true, data: { ...app, dependencias_ids } });
+  } catch (e: any) {
+    console.error("Error en GET /cfg/aplicaciones/:id:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// UPDATE APLICACION (editar)
+router.put("/aplicaciones/:id", async (req, res) => {
+  const conn = await pool.getConnection();
+
+  try {
+    const id_aplicacion = Number(req.params.id);
+    if (!Number.isFinite(id_aplicacion) || id_aplicacion <= 0) {
+      conn.release();
+      return res.status(400).json({ ok: false, error: "id invalido" });
+    }
+
+    const {
+      nombre,
+      descripcion,
+      id_vendor_software,
+      vendor_software_nuevo,
+      id_propietario,
+      version,
+      rto_horas,
+      impacto_negocio,
+      id_proveedor,
+
+      dependencias_ids,
+      dependencias_nuevas,
+    } = req.body;
+
+    if (!nombre || String(nombre).trim() === "") {
+      conn.release();
+      return res.status(400).json({ ok: false, error: "nombre es requerido" });
+    }
+
+    const toNumOrNull = (v: any) => {
+      if (v === null || v === undefined || v === "") return null;
+      const n = Number(v);
+      if (Number.isNaN(n)) return "__NaN__";
+      return n;
+    };
+
+    const provNum = toNumOrNull(id_proveedor);
+    if (provNum === "__NaN__") {
+      conn.release();
+      return res
+        .status(400)
+        .json({ ok: false, error: "id_proveedor debe ser numero" });
+    }
+
+    const propNum = toNumOrNull(id_propietario);
+    if (propNum === "__NaN__") {
+      conn.release();
+      return res
+        .status(400)
+        .json({ ok: false, error: "id_propietario debe ser numero" });
+    }
+
+    const rtoNum = toNumOrNull(rto_horas);
+    if (rtoNum === "__NaN__") {
+      conn.release();
+      return res
+        .status(400)
+        .json({ ok: false, error: "rto_horas debe ser numero" });
+    }
+
+    const vendSoftNumRaw = toNumOrNull(id_vendor_software);
+    if (vendSoftNumRaw === "__NaN__") {
+      conn.release();
+      return res
+        .status(400)
+        .json({ ok: false, error: "id_vendor_software debe ser numero" });
+    }
+
+    const normalize = (s: string) =>
+      String(s ?? "")
+        .trim()
+        .replace(/\s+/g, " ");
+
+    const vendorNuevo = vendor_software_nuevo
+      ? normalize(vendor_software_nuevo)
+      : "";
+    const impactoTxt = impacto_negocio ? String(impacto_negocio) : null;
+
+    const depsExistentes: number[] = Array.isArray(dependencias_ids)
+      ? dependencias_ids
+          .map((x: any) => Number(x))
+          .filter((x: any) => !Number.isNaN(x))
+      : [];
+
+    const depsNuevasRaw: string[] = Array.isArray(dependencias_nuevas)
+      ? dependencias_nuevas
+          .map((x: any) => normalize(x))
+          .filter((x: string) => x !== "")
+      : [];
+
+    const depsNuevas: string[] = [];
+    const seenNew = new Set<string>();
+    for (const d of depsNuevasRaw) {
+      const key = d.toLowerCase();
+      if (!seenNew.has(key)) {
+        seenNew.add(key);
+        depsNuevas.push(d);
+      }
+    }
+
+    await conn.beginTransaction();
+
+    // Verificar existe
+    const [exists]: any = await conn.query(
+      `SELECT id_aplicacion FROM aplicacion WHERE id_aplicacion = ? LIMIT 1`,
+      [id_aplicacion],
+    );
+    if (!Array.isArray(exists) || exists.length === 0) {
+      await conn.rollback();
+      conn.release();
+      return res
+        .status(404)
+        .json({ ok: false, error: "No existe la aplicacion" });
+    }
+
+    // Resolver vendor software
+    let vendSoftFinal: number | null =
+      vendSoftNumRaw === null ? null : vendSoftNumRaw;
+
+    if (vendorNuevo !== "") {
+      const [foundVS]: any = await conn.query(
+        `SELECT id_vendor_software FROM vendor_software WHERE LOWER(nombre)=LOWER(?) LIMIT 1`,
+        [vendorNuevo],
+      );
+
+      if (Array.isArray(foundVS) && foundVS.length > 0) {
+        vendSoftFinal = Number(foundVS[0].id_vendor_software);
+      } else {
+        const [insVS]: any = await conn.query(
+          `INSERT INTO vendor_software (nombre) VALUES (?)`,
+          [vendorNuevo],
+        );
+        vendSoftFinal = insVS.insertId;
+      }
+    }
+
+    // Update aplicacion
+    await conn.query(
+      `
+      UPDATE aplicacion
+      SET
+        nombre = ?,
+        descripcion = ?,
+        id_vendor_software = ?,
+        version = ?,
+        rto_horas = ?,
+        impacto_negocio = ?,
+        id_proveedor = ?,
+        id_propietario = ?
+      WHERE id_aplicacion = ?
+      `,
+      [
+        normalize(nombre),
+        descripcion ? String(descripcion) : null,
+        vendSoftFinal,
+        version ? String(version) : null,
+        rtoNum,
+        impactoTxt,
+        provNum,
+        propNum,
+        id_aplicacion,
+      ],
+    );
+
+    // Resolver dependencias nuevas (crear si no existen)
+    const depsNuevasIds: number[] = [];
+    for (const depName of depsNuevas) {
+      const [foundDep]: any = await conn.query(
+        `SELECT id_dependencia FROM dependencia WHERE LOWER(nombre)=LOWER(?) LIMIT 1`,
+        [depName],
+      );
+
+      if (Array.isArray(foundDep) && foundDep.length > 0) {
+        depsNuevasIds.push(Number(foundDep[0].id_dependencia));
+      } else {
+        const [insDep]: any = await conn.query(
+          `INSERT INTO dependencia (nombre) VALUES (?)`,
+          [depName],
+        );
+        depsNuevasIds.push(insDep.insertId);
+      }
+    }
+
+    // Unir deps existentes + nuevas, quitar duplicados
+    const allDeps = [...depsExistentes, ...depsNuevasIds]
+      .map((x) => Number(x))
+      .filter((x) => !Number.isNaN(x));
+
+    const finalDeps: number[] = [];
+    const seen = new Set<number>();
+    for (const idDep of allDeps) {
+      if (!seen.has(idDep)) {
+        seen.add(idDep);
+        finalDeps.push(idDep);
+      }
+    }
+
+    // Reemplazar tabla puente (simple y limpio)
+    await conn.query(
+      `DELETE FROM dependencia_aplicacion WHERE id_aplicacion = ?`,
+      [id_aplicacion],
+    );
+
+    if (finalDeps.length > 0) {
+      const values = finalDeps.map((idDep) => [id_aplicacion, idDep]);
+      await conn.query(
+        `INSERT INTO dependencia_aplicacion (id_aplicacion, id_dependencia) VALUES ?`,
+        [values],
+      );
+    }
+
+    await conn.commit();
+    res.json({ ok: true });
+  } catch (e: any) {
+    try {
+      await conn.rollback();
+    } catch {}
+    console.error("Error en PUT /cfg/aplicaciones/:id:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  } finally {
+    conn.release();
+  }
+});
+
 router.get("/catalogos/proveedores", async (req, res) => {
   try {
     const [rows] = await pool.query(`
@@ -427,6 +804,7 @@ router.get("/catalogos/dependencias", async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
 router.get("/catalogos/empleados", async (req, res) => {
   try {
     const [rows] = await pool.query(`
@@ -445,47 +823,64 @@ router.post("/empleados", async (req, res) => {
   try {
     const {
       nombre,
-        departamento,
-        aplicaciones_id,
-        empleados_respaldo_id,
-        habilidad,
-        numero_requerido,
-        rol_tabla,
-        descripcion_rol,
+      departamento,
+      aplicaciones_id,
+      empleados_respaldo_id,
+      habilidad,
+      numero_requerido,
+      rol_tabla,
+      descripcion_rol,
     } = req.body;
 
     if (!nombre) {
-      return res.status(400).json({ ok: false, error: "El nombre es obligatorio" });
+      return res
+        .status(400)
+        .json({ ok: false, error: "El nombre es obligatorio" });
     }
     if (!departamento) {
-      return res.status(400).json({ ok: false, error: "El departamento es obligatorio" });
+      return res
+        .status(400)
+        .json({ ok: false, error: "El departamento es obligatorio" });
     }
     if (!habilidad) {
-      return res.status(400).json({ ok: false, error: "La habilidad es obligatoria" });
+      return res
+        .status(400)
+        .json({ ok: false, error: "La habilidad es obligatoria" });
     }
     if (!numero_requerido || isNaN(Number(numero_requerido))) {
-      return res.status(400).json({ ok: false, error: "El numero_requerido es obligatorio y debe ser un numero" });
+      return res.status(400).json({
+        ok: false,
+        error: "El numero_requerido es obligatorio y debe ser un numero",
+      });
     }
     if (!rol_tabla) {
-      return res.status(400).json({ ok: false, error: "El rol es obligatorio" });
+      return res
+        .status(400)
+        .json({ ok: false, error: "El rol es obligatorio" });
     }
     if (!descripcion_rol) {
-      return res.status(400).json({ ok: false, error: "La descripcion del rol es obligatoria" });
+      return res
+        .status(400)
+        .json({ ok: false, error: "La descripcion del rol es obligatoria" });
     }
     for (const id of empleados_respaldo_id || []) {
       if (isNaN(Number(id))) {
-        return res.status(400).json({ ok: false, error: "Todos los empleados de respaldo deben ser numeros" });
+        return res.status(400).json({
+          ok: false,
+          error: "Todos los empleados de respaldo deben ser numeros",
+        });
       }
     }
     for (const id of aplicaciones_id || []) {
       if (isNaN(Number(id))) {
-        return res.status(400).json({ ok: false, error: "Todas las aplicaciones asignadas deben ser numeros" });
+        return res.status(400).json({
+          ok: false,
+          error: "Todas las aplicaciones asignadas deben ser numeros",
+        });
       }
     }
 
-
     // Insert employee
-    
 
     const [Respuesta] = await pool.query(
       `INSERT INTO rol_empleado (nombre, descripcion) VALUES (?, ?)`,
